@@ -1,13 +1,14 @@
 use std::time::Duration;
 
+use dbus::arg::messageitem::MessageItemArray;
+use dbus::arg::TypeMismatchError;
 use dbus::blocking::Connection;
 use dbus::channel::MatchingReceiver;
 use dbus::message::MatchRule;
+use dbus::strings::Path;
 use dbus::Message;
 
-// This programs implements the equivalent of running the "dbus-monitor" tool
-fn main() {
-    // First open up a connection to the desired bus.
+fn watch() {
     let conn = Connection::new_system().expect("D-Bus connection failed");
 
     let systemd_proxy = conn.with_proxy(
@@ -31,10 +32,11 @@ fn main() {
         "/org/freedesktop/DBus",
         Duration::from_millis(5000),
     );
-    // Second create a rule to match messages we want to receive; in this example we add no
-    // further requirements, so all messages will match
-    let rule = MatchRule::new();
 
+    let rule = MatchRule::new_signal("org.freedesktop.systemd1.Manager", "JobRemoved");
+
+    // XXX probabyl not needed
+    // see signal receiving here: https://github.com/diwic/dbus-rs/blob/master/dbus/examples/match_signal.rs
     let result: Result<(), dbus::Error> = dbus_proxy.method_call(
         "org.freedesktop.DBus.Monitoring",
         "BecomeMonitor",
@@ -42,12 +44,11 @@ fn main() {
     );
 
     match result {
-        // BecomeMonitor was successful, start listening for messages
         Ok(_) => {
             conn.start_receive(
                 rule,
                 Box::new(|msg, _| {
-                    handle_message(&msg);
+                    handle_job_removed(&msg);
                     true
                 }),
             );
@@ -65,6 +66,44 @@ fn main() {
     }
 }
 
-fn handle_message(msg: &Message) {
-    println!("Got message: {:?}", msg);
+fn handle_job_removed(msg: &Message) {
+    let result: Result<(u32, Path, &str, &str), TypeMismatchError> = msg.read4();
+    match result {
+        Ok((_, _, unit, unit_result)) => {
+            println!("{} stopped with {}", unit, unit_result);
+        }
+        Err(e) => {
+            eprintln!("reading message failed: {:?}", e);
+        }
+    }
+}
+
+fn notify() {
+    let conn = Connection::new_session().expect("D-Bus connection failed");
+
+    let proxy = conn.with_proxy(
+        "org.freedesktop.Notifications",
+        "/org/freedesktop/Notifications",
+        Duration::from_millis(5000),
+    );
+
+    let x = MessageItemArray::new(vec![], "as".into()).unwrap();
+    let y = MessageItemArray::new(vec![], "a{sv}".into()).unwrap();
+
+    let result: Result<(), dbus::Error> = proxy.method_call(
+        "org.freedesktop.Notifications",
+        "Notify",
+        ("sdshout", 123u32, "", "foo", "body boyy", x, y, 5000i32),
+    );
+    match result {
+        Ok(_) => println!("succces"),
+        Err(err) => {
+            eprintln!("Subscribe failed: '{}'", err);
+        }
+    }
+}
+
+fn main() {
+    // XXX maybe becomemonitor is unnecessary??
+    watch();
 }
