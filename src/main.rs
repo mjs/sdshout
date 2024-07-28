@@ -2,10 +2,13 @@ use std::time::Duration;
 
 use dbus::arg;
 use dbus::arg::messageitem::MessageItemArray;
-use dbus::arg::TypeMismatchError;
 use dbus::blocking::Connection;
-use dbus::strings::Path;
 use dbus::Message;
+
+// TODO
+// - split out watching in a module, make it take a notify fn
+// - report dead services on startup
+// - rate limiting
 
 /// Generated using:
 /// dbus-codegen-rust -s -p /org/freedesktop/systemd1 -d org.freedesktop.systemd1
@@ -55,14 +58,7 @@ fn watch() {
         }
     }
 
-    systemd_proxy
-        .match_signal(
-            |h: OrgFreedesktopSystemd1ManagerJobRemoved, _: &Connection, _: &Message| {
-                println!("JobRemoved: {} {} {}", h.job, h.unit, h.result);
-                true
-            },
-        )
-        .unwrap();
+    systemd_proxy.match_signal(handle_job_removed).unwrap(); // XXX avoid
 
     // Loop and print out all messages received (using handle_message()) as they come.
     // Some can be quite large, e.g. if they contain embedded images..
@@ -71,19 +67,16 @@ fn watch() {
     }
 }
 
-fn handle_job_removed(msg: &Message) {
-    let result: Result<(u32, Path, &str, &str), TypeMismatchError> = msg.read4();
-    match result {
-        Ok((_, _, unit, unit_result)) => {
-            println!("{} stopped with {}", unit, unit_result);
-        }
-        Err(e) => {
-            eprintln!("reading message failed: {:?}", e);
-        }
-    }
+fn handle_job_removed(
+    h: OrgFreedesktopSystemd1ManagerJobRemoved,
+    _: &Connection,
+    _: &Message,
+) -> bool {
+    notify(&h.unit, &h.result);
+    true
 }
 
-fn notify() {
+fn notify(unit_name: &str, result: &str) {
     let conn = Connection::new_session().expect("D-Bus connection failed");
 
     let proxy = conn.with_proxy(
@@ -92,18 +85,27 @@ fn notify() {
         Duration::from_millis(5000),
     );
 
-    let x = MessageItemArray::new(vec![], "as".into()).unwrap();
-    let y = MessageItemArray::new(vec![], "a{sv}".into()).unwrap();
+    let actions = MessageItemArray::new(vec![], "as".into()).unwrap();
+    let hints = MessageItemArray::new(vec![], "a{sv}".into()).unwrap();
 
     let result: Result<(), dbus::Error> = proxy.method_call(
         "org.freedesktop.Notifications",
         "Notify",
-        ("sdshout", 123u32, "", "foo", "body boyy", x, y, 5000i32),
+        (
+            "sdshout",
+            0u32,
+            "", // app_icon
+            format!("Local unit {} is {}", unit_name, result),
+            "",
+            actions,
+            hints,
+            15000i32, // expire timeout (ms)
+        ),
     );
     match result {
-        Ok(_) => println!("succces"),
+        Ok(_) => {}
         Err(err) => {
-            eprintln!("Subscribe failed: '{}'", err);
+            eprintln!("notify failed: '{}'", err);
         }
     }
 }
