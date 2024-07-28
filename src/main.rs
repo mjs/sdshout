@@ -1,12 +1,40 @@
 use std::time::Duration;
 
+use dbus::arg;
 use dbus::arg::messageitem::MessageItemArray;
 use dbus::arg::TypeMismatchError;
 use dbus::blocking::Connection;
-use dbus::channel::MatchingReceiver;
-use dbus::message::MatchRule;
 use dbus::strings::Path;
 use dbus::Message;
+
+/// Generated using:
+/// dbus-codegen-rust -s -p /org/freedesktop/systemd1 -d org.freedesktop.systemd1
+///
+
+pub struct OrgFreedesktopSystemd1ManagerJobRemoved {
+    pub id: u32,
+    pub job: dbus::Path<'static>,
+    pub unit: String,
+    pub result: String,
+}
+
+impl arg::ReadAll for OrgFreedesktopSystemd1ManagerJobRemoved {
+    fn read(i: &mut arg::Iter) -> Result<Self, arg::TypeMismatchError> {
+        Ok(OrgFreedesktopSystemd1ManagerJobRemoved {
+            id: i.read()?,
+            job: i.read()?,
+            unit: i.read()?,
+            result: i.read()?,
+        })
+    }
+}
+
+impl dbus::message::SignalArgs for OrgFreedesktopSystemd1ManagerJobRemoved {
+    const NAME: &'static str = "JobRemoved";
+    const INTERFACE: &'static str = "org.freedesktop.systemd1.Manager";
+}
+
+// END Generated
 
 fn watch() {
     let conn = Connection::new_system().expect("D-Bus connection failed");
@@ -27,37 +55,14 @@ fn watch() {
         }
     }
 
-    let dbus_proxy = conn.with_proxy(
-        "org.freedesktop.DBus",
-        "/org/freedesktop/DBus",
-        Duration::from_millis(5000),
-    );
-
-    let rule = MatchRule::new_signal("org.freedesktop.systemd1.Manager", "JobRemoved");
-
-    // XXX probabyl not needed
-    // see signal receiving here: https://github.com/diwic/dbus-rs/blob/master/dbus/examples/match_signal.rs
-    let result: Result<(), dbus::Error> = dbus_proxy.method_call(
-        "org.freedesktop.DBus.Monitoring",
-        "BecomeMonitor",
-        (vec![rule.match_str()], 0u32),
-    );
-
-    match result {
-        Ok(_) => {
-            conn.start_receive(
-                rule,
-                Box::new(|msg, _| {
-                    handle_job_removed(&msg);
-                    true
-                }),
-            );
-        }
-        Err(e) => {
-            eprintln!("Failed to BecomeMonitor: '{}'", e);
-            return;
-        }
-    }
+    systemd_proxy
+        .match_signal(
+            |h: OrgFreedesktopSystemd1ManagerJobRemoved, _: &Connection, _: &Message| {
+                println!("JobRemoved: {} {} {}", h.job, h.unit, h.result);
+                true
+            },
+        )
+        .unwrap();
 
     // Loop and print out all messages received (using handle_message()) as they come.
     // Some can be quite large, e.g. if they contain embedded images..
@@ -104,6 +109,5 @@ fn notify() {
 }
 
 fn main() {
-    // XXX maybe becomemonitor is unnecessary??
     watch();
 }
