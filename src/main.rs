@@ -6,9 +6,14 @@ use dbus::blocking::Connection;
 use dbus::Message;
 
 // TODO
+// - github
 // - split out watching in a module, make it take a notify fn
+// - figure out icons
 // - report dead services on startup
+// - release
 // - rate limiting
+// - configurable delay
+// - ignore some units
 
 /// Generated using:
 /// dbus-codegen-rust -s -p /org/freedesktop/systemd1 -d org.freedesktop.systemd1
