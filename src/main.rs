@@ -1,9 +1,10 @@
+mod watch;
+
 use std::time::Duration;
 
-use dbus::arg;
+use color_eyre::eyre::Result;
 use dbus::arg::messageitem::MessageItemArray;
 use dbus::blocking::Connection;
-use dbus::Message;
 
 // TODO
 // - github
@@ -11,75 +12,9 @@ use dbus::Message;
 // - figure out icons
 // - report dead services on startup
 // - release
-// - rate limiting
+// - rate limiting and/or aggregation
 // - configurable delay
 // - ignore some units
-
-/// Generated using:
-/// dbus-codegen-rust -s -p /org/freedesktop/systemd1 -d org.freedesktop.systemd1
-///
-
-pub struct OrgFreedesktopSystemd1ManagerJobRemoved {
-    pub id: u32,
-    pub job: dbus::Path<'static>,
-    pub unit: String,
-    pub result: String,
-}
-
-impl arg::ReadAll for OrgFreedesktopSystemd1ManagerJobRemoved {
-    fn read(i: &mut arg::Iter) -> Result<Self, arg::TypeMismatchError> {
-        Ok(OrgFreedesktopSystemd1ManagerJobRemoved {
-            id: i.read()?,
-            job: i.read()?,
-            unit: i.read()?,
-            result: i.read()?,
-        })
-    }
-}
-
-impl dbus::message::SignalArgs for OrgFreedesktopSystemd1ManagerJobRemoved {
-    const NAME: &'static str = "JobRemoved";
-    const INTERFACE: &'static str = "org.freedesktop.systemd1.Manager";
-}
-
-// END Generated
-
-fn watch() {
-    let conn = Connection::new_system().expect("D-Bus connection failed");
-
-    let systemd_proxy = conn.with_proxy(
-        "org.freedesktop.systemd1",
-        "/org/freedesktop/systemd1",
-        Duration::from_millis(5000),
-    );
-
-    let result: Result<(), dbus::Error> =
-        systemd_proxy.method_call("org.freedesktop.systemd1.Manager", "Subscribe", ());
-    match result {
-        Ok(_) => (),
-        Err(err) => {
-            eprintln!("Subscribe failed: '{}'", err);
-            return;
-        }
-    }
-
-    systemd_proxy.match_signal(handle_job_removed).unwrap(); // XXX avoid
-
-    // Loop and print out all messages received (using handle_message()) as they come.
-    // Some can be quite large, e.g. if they contain embedded images..
-    loop {
-        conn.process(Duration::from_millis(1000)).unwrap();
-    }
-}
-
-fn handle_job_removed(
-    h: OrgFreedesktopSystemd1ManagerJobRemoved,
-    _: &Connection,
-    _: &Message,
-) -> bool {
-    notify(&h.unit, &h.result);
-    true
-}
 
 fn notify(unit_name: &str, result: &str) {
     let conn = Connection::new_session().expect("D-Bus connection failed");
@@ -115,6 +50,7 @@ fn notify(unit_name: &str, result: &str) {
     }
 }
 
-fn main() {
-    watch();
+fn main() -> Result<()> {
+    color_eyre::install()?;
+    watch::watch_units(notify)
 }
