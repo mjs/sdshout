@@ -1,7 +1,7 @@
 mod notify;
 mod watch;
 
-use color_eyre::eyre::Result;
+use eyre::Result;
 
 // TODO
 // - github
@@ -13,6 +13,5 @@ use color_eyre::eyre::Result;
 // - ignore some units
 
 fn main() -> Result<()> {
-    color_eyre::install()?;
     watch::watch_units(notify::notify)
 }

@@ -1,6 +1,5 @@
 use std::time::Duration;
 
-use color_eyre::eyre::Result;
 use dbus::arg::messageitem::MessageItemArray;
 use dbus::blocking::Connection;
 
