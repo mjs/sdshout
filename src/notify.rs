@@ -6,6 +6,10 @@ use dbus::blocking::Connection;
 pub fn notify(unit_name: &str, result: &str) {
     let conn = Connection::new_session().expect("D-Bus connection failed");
 
+    if result != "failed" {
+        return;
+    }
+
     let proxy = conn.with_proxy(
         "org.freedesktop.Notifications",
         "/org/freedesktop/Notifications",
@@ -22,7 +26,7 @@ pub fn notify(unit_name: &str, result: &str) {
             "sdshout",
             0u32,
             "", // app_icon
-            format!("Local unit {} is {}", unit_name, result),
+            format!("Unit {} has failed", unit_name),
             "",
             actions,
             hints,
