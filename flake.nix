@@ -1,26 +1,54 @@
 {
+  description = "sdshout";
+
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.05";
     utils.url = "github:numtide/flake-utils";
-    fenix = {
-      url = "github:nix-community/fenix";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
   };
 
-  outputs = { self, utils, nixpkgs, fenix, }: utils.lib.eachDefaultSystem (system: let 
-    pkgs = nixpkgs.legacyPackages.${system};
-    rust = fenix.packages.${system};
-    lib = pkgs.lib;
-  in {
-    devShell = pkgs.mkShell {
-      buildInputs = with pkgs; with llvmPackages; [
-        rust.stable.toolchain pkg-config dbus
-      ];
+  outputs = {
+    self,
+    nixpkgs,
+    utils,
+    ...
+  }:
+    utils.lib.eachDefaultSystem
+    (
+      system: let
+        pkgs = import nixpkgs {inherit system;};
+        toolchain = pkgs.rustPlatform;
+      in rec
+      {
+        # Executed by `nix build`
+        packages.default = toolchain.buildRustPackage {
+          pname = "sdshout";
+          version = "0.1.0";
+          src = ./.;
+          cargoLock.lockFile = ./Cargo.lock;
+          buildInputs = with pkgs; [pkg-config dbus];
+          nativeBuildInputs = with pkgs; [pkg-config dbus];
+        };
 
-      RUST_BACKTRACE = 1;
-      # RUST_LOG = "info,sqlx::query=warn";
-      # RUSTFLAGS = "-C target-cpu=native";
-    };
-  });
+        # Executed by `nix run`
+        apps.default = utils.lib.mkApp {drv = packages.default;};
+
+        # Used by `nix develop`
+        devShells.default = pkgs.mkShell {
+          buildInputs = with pkgs; [
+            (with toolchain; [
+              cargo
+              rustc
+              rustLibSrc
+            ])
+            rust-analyzer
+            clippy
+            rustfmt
+            pkg-config
+            dbus
+          ];
+
+          # Specify the rust-src path (many editors rely on this)
+          RUST_SRC_PATH = "${toolchain.rustLibSrc}";
+        };
+      }
+    );
 }
