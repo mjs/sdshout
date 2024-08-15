@@ -1,6 +1,7 @@
+use std::collections::HashMap;
 use std::time::Duration;
 
-use dbus::arg::messageitem::MessageItemArray;
+use dbus::arg::Variant;
 use dbus::blocking::Connection;
 
 pub fn notify(unit_name: &str, result: &str) {
@@ -16,8 +17,8 @@ pub fn notify(unit_name: &str, result: &str) {
         Duration::from_millis(5000),
     );
 
-    let actions = MessageItemArray::new(vec![], "as".into()).unwrap();
-    let hints = MessageItemArray::new(vec![], "a{sv}".into()).unwrap();
+    let actions: Vec<&str> = Vec::new();
+    let hints = HashMap::from([("image-path", Variant("dialog-warning"))]);
 
     let result: Result<(), dbus::Error> = proxy.method_call(
         "org.freedesktop.Notifications",
@@ -25,7 +26,7 @@ pub fn notify(unit_name: &str, result: &str) {
         (
             "sdshout",
             0u32,
-            "", // app_icon
+            "emblem-system", // app_icon
             format!("Unit {} has failed", unit_name),
             "",
             actions,
