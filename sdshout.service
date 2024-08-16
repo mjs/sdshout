@@ -1,0 +1,13 @@
+[Unit]
+Description=systemd unit notifier
+After=multi-user.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/sdshout
+# On NixOS:
+# ExecStart=/etc/profiles/per-user/<username>/bin/sdshout
+Restart=always
+
+[Install]
+WantedBy=default.target
