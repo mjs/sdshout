@@ -1,5 +1,6 @@
 [package]
 name = "sdshout"
+description = "Desktop notifications for systemd service failures"
 version = "0.1.0"
 edition = "2021"
 repository = "https://github.com/mjs/sdshout/"
