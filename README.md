@@ -4,6 +4,8 @@ sdshout is a simple service which generates desktop notifications on Linux
 systems when systemd services fail. It's useful for knowing when system
 updates, automated backups or other critical jobs aren't working.
 
+![sample notification](screenshot.png)
+
 sdshout is intended to run a user systemd service. It connects to the system
 D-Bus to detect failed services.
 
