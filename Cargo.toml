@@ -2,6 +2,11 @@
 name = "sdshout"
 version = "0.1.0"
 edition = "2021"
+repository = "https://github.com/mjs/sdshout/"
+license = "Apache-2.0"
+readme = "README.md"
+keywords =["systemd", "notify", "desktop", "dbus"]
+categories = ["command-line-utilities"]
 
 [dependencies]
 dbus = "0.9.7"
