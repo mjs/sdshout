@@ -4,17 +4,20 @@ use std::time::Duration;
 use dbus::arg::Variant;
 use dbus::blocking::Connection;
 
-pub fn notify(unit_name: &str, result: &str) {
-    let conn = Connection::new_session().expect("D-Bus connection failed");
+const CONN_TIMEOUT: Duration = Duration::from_millis(5000);
 
-    if result != "failed" {
-        return;
-    }
+pub struct NotifyInfo {
+    pub message: String,
+    pub timeout: i32,
+}
+
+pub fn notify(info: NotifyInfo) {
+    let conn = Connection::new_session().expect("D-Bus connection failed");
 
     let proxy = conn.with_proxy(
         "org.freedesktop.Notifications",
         "/org/freedesktop/Notifications",
-        Duration::from_millis(5000),
+        CONN_TIMEOUT,
     );
 
     let actions: Vec<&str> = Vec::new();
@@ -27,11 +30,11 @@ pub fn notify(unit_name: &str, result: &str) {
             "sdshout",
             0u32,
             "emblem-system", // app_icon
-            format!("Unit {} has failed", unit_name),
+            info.message,
             "",
             actions,
             hints,
-            15000i32, // expire timeout (ms)
+            info.timeout,
         ),
     );
     match result {
