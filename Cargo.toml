@@ -12,3 +12,7 @@ categories = ["command-line-utilities"]
 [dependencies]
 dbus = "0.9.7"
 eyre = "0.6.12"
+serde = { version = "1.0.209", features = ["std", "derive"] }
+strum = "0.26.3"
+strum_macros = "0.26.4"
+toml = "0.8.19"
