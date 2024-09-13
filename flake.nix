@@ -42,6 +42,7 @@
             rust-analyzer
             clippy
             rustfmt
+            cargo-watch
             pkg-config
             dbus
           ];
