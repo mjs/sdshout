@@ -61,14 +61,11 @@ pub struct Defaults {
 pub struct Service {
     pub name: String,
 
-    #[serde(default = "default_timeout")]
-    pub timeout: u32, // ms
+    pub timeout: Option<u32>, // ms
 
-    #[serde(default = "default_urgency")]
-    pub urgency: Urgency,
+    pub urgency: Option<Urgency>,
 
-    #[serde(default = "default_notify_on")]
-    pub notify_on: Vec<JobResult>,
+    pub notify_on: Option<Vec<JobResult>>,
 }
 
 #[derive(Deserialize, Debug, PartialEq, EnumString)]
@@ -113,12 +110,16 @@ fn default_urgency() -> Urgency {
 }
 
 fn default_notify_on() -> Vec<JobResult> {
-    // XXX review this
-    vec![JobResult::Failed]
+    vec![JobResult::Failed, JobResult::Timeout]
 }
 
 fn default_services() -> Vec<Service> {
-    vec![]
+    vec![Service {
+        name: String::from("*"),
+        timeout: None,
+        urgency: None,
+        notify_on: None,
+    }]
 }
 
 #[cfg(test)]
@@ -141,13 +142,21 @@ mod tests {
     #[test]
     fn empty() {
         let config: Config = toml::from_str("").unwrap();
-        assert!(config.check_on_startup);
         assert_eq!(
-            config.defaults,
-            Defaults {
-                timeout: 5000,
-                urgency: Urgency::Normal,
-                notify_on: vec![JobResult::Failed],
+            config,
+            Config {
+                check_on_startup: true,
+                defaults: Defaults {
+                    timeout: 5000,
+                    urgency: Urgency::Normal,
+                    notify_on: vec![JobResult::Failed, JobResult::Timeout],
+                },
+                services: vec![Service {
+                    name: String::from("*"),
+                    timeout: None,
+                    urgency: None,
+                    notify_on: None,
+                }],
             }
         );
     }
@@ -166,7 +175,7 @@ mod tests {
             Defaults {
                 timeout: 200,
                 urgency: Urgency::Normal,
-                notify_on: vec![JobResult::Failed],
+                notify_on: vec![JobResult::Failed, JobResult::Timeout],
             }
         );
     }
@@ -198,9 +207,9 @@ mod tests {
             service,
             &Service {
                 name: String::from("foo"),
-                timeout: 5000,
-                urgency: Urgency::Normal,
-                notify_on: vec![JobResult::Failed],
+                timeout: None,
+                urgency: None,
+                notify_on: None,
             }
         )
     }
@@ -223,9 +232,9 @@ mod tests {
             service,
             &Service {
                 name: String::from("foo"),
-                timeout: 123,
-                urgency: Urgency::Low,
-                notify_on: vec![JobResult::Done, JobResult::Skipped],
+                timeout: Some(123),
+                urgency: Some(Urgency::Low),
+                notify_on: Some(vec![JobResult::Done, JobResult::Skipped]),
             }
         )
     }
